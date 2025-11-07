@@ -38,6 +38,8 @@
 #include "QuadraticPolyDOU.h"
 #include "QuadraticPolyMixedGaussian.h"
 #include "QuadraticPolyMixedGaussian1D.h"
+#include "QuadraticPolyEHD.h"
+#include "QuadraticPolyEHD1D.h"
 
 // [[Rcpp::plugins("cpp11")]]
 // [[Rcpp::plugins(openmp)]]
@@ -938,6 +940,59 @@ QuadraticPolyEB1D* CreateQuadraticPolyEB1D(
   return new QuadraticPolyEB1D(pObjs.br_0, pObjs.br_1, lengths, data);
 }
 
+QuadraticPolyEHD* CreateQuadraticPolyEHD(
+    arma::mat const& X, 
+    Rcpp::List const& tree, 
+    Rcpp::List const& model,
+    Rcpp::List const& metaInfo) { 
+    
+  ParsedRObjects pObjs(X, tree, model, metaInfo);
+  
+  vector<typename QuadraticPolyEHD::LengthType> lengths(pObjs.num_branches);
+  
+  for(arma::uword i = 0; i < pObjs.num_branches; ++i) {
+    lengths[i].length_ = pObjs.t[i];
+    lengths[i].regime_ = pObjs.regimes[i] - 1;
+  }
+  
+  typename QuadraticPolyEHD::DataType data(
+      pObjs.tip_names, pObjs.X, pObjs.VE, pObjs.Pc, pObjs.RModel, 
+      std::vector<std::string>(), 
+      pObjs.threshold_SV, pObjs.threshold_EV, 
+      pObjs.threshold_skip_singular, pObjs.skip_singular,
+      pObjs.transpose_Sigma_x,
+      pObjs.threshold_Lambda_ij,
+      pObjs.NA_double_);
+  
+  return new QuadraticPolyEHD(pObjs.br_0, pObjs.br_1, lengths, data);
+}
+
+QuadraticPolyEHD1D* CreateQuadraticPolyEHD1D(
+    arma::mat const& X, 
+    Rcpp::List const& tree, 
+    Rcpp::List const& model) { 
+    
+  ParsedRObjects pObjs(X, tree, model);
+  
+  vector<typename QuadraticPolyEHD1D::LengthType> lengths(pObjs.num_branches);
+  
+  for(arma::uword i = 0; i < pObjs.num_branches; ++i) {
+    lengths[i].length_ = pObjs.t[i];
+    lengths[i].regime_ = pObjs.regimes[i] - 1;
+  }
+  
+  typename QuadraticPolyEHD1D::DataType data(
+      pObjs.tip_names, pObjs.X.row(0), pObjs.VE.slice(0).diag(), pObjs.Pc, pObjs.RModel, 
+      std::vector<std::string>(), 
+      pObjs.threshold_SV, pObjs.threshold_EV, 
+      pObjs.threshold_skip_singular, pObjs.skip_singular,
+      pObjs.transpose_Sigma_x,
+      pObjs.threshold_Lambda_ij,
+      pObjs.NA_double_);
+  
+  return new QuadraticPolyEHD1D(pObjs.br_0, pObjs.br_1, lengths, data);
+}
+
 //RCPP_EXPOSED_CLASS_NODECL(QuadraticPolyEB1D::TreeType)
 RCPP_EXPOSED_CLASS_NODECL(QuadraticPolyEB1D::AlgorithmType)
   
@@ -980,3 +1035,57 @@ RCPP_EXPOSED_CLASS_NODECL(QuadraticPolyEB1D::AlgorithmType)
       .property( "algorithm", &QuadraticPolyEB1D::algorithm )
     ;
   }
+
+RCPP_EXPOSED_CLASS_NODECL(QuadraticPolyEHD::TreeType)
+RCPP_EXPOSED_CLASS_NODECL(QuadraticPolyEHD::AlgorithmType)
+
+RCPP_MODULE(PCMBaseCpp__QuadraticPolyEHD) {
+  Rcpp::class_<QuadraticPolyEHD::AlgorithmType::ParentType>( "PCMBaseCpp__QuadraticPolyEHD_TraversalAlgorithm" )
+    .property( "VersionOPENMP", &QuadraticPolyEHD::AlgorithmType::ParentType::VersionOPENMP )
+    .property( "NumOmpThreads", &QuadraticPolyEHD::AlgorithmType::NumOmpThreads )
+  ;
+  Rcpp::class_<QuadraticPolyEHD::AlgorithmType> ( "PCMBaseCpp__QuadraticPolyEHD_ParallelPruning" )
+    .derives<QuadraticPolyEHD::AlgorithmType::ParentType>( "PCMBaseCpp__QuadraticPolyEHD_TraversalAlgorithm" )
+    .method( "ModeAutoStep", &QuadraticPolyEHD::AlgorithmType::ModeAutoStep )
+    .property( "ModeAutoCurrent", &QuadraticPolyEHD::AlgorithmType::ModeAutoCurrent )
+    .property( "IsTuning", &QuadraticPolyEHD::AlgorithmType::IsTuning )
+    .property( "min_size_chunk_visit", &QuadraticPolyEHD::AlgorithmType::min_size_chunk_visit )
+    .property( "min_size_chunk_prune", &QuadraticPolyEHD::AlgorithmType::min_size_chunk_prune )
+    .property( "durations_tuning", &QuadraticPolyEHD::AlgorithmType::durations_tuning )
+    .property( "fastest_step_tuning", &QuadraticPolyEHD::AlgorithmType::fastest_step_tuning )
+  ;
+  Rcpp::class_<QuadraticPolyEHD>( "PCMBaseCpp__QuadraticPolyEHD" )
+    .factory<arma::mat const&, Rcpp::List const&, Rcpp::List const&, Rcpp::List const&>(&CreateQuadraticPolyEHD)
+    .method( "TraverseTree", &QuadraticPolyEHD::TraverseTree )
+    .method( "StateAtNode", &QuadraticPolyEHD::StateAtNode )
+    .property( "tree", &QuadraticPolyEHD::tree )
+    .property( "algorithm", &QuadraticPolyEHD::algorithm )
+  ;
+}
+
+RCPP_EXPOSED_CLASS_NODECL(QuadraticPolyEHD1D::TreeType)
+RCPP_EXPOSED_CLASS_NODECL(QuadraticPolyEHD1D::AlgorithmType)
+
+RCPP_MODULE(PCMBaseCpp__QuadraticPolyEHD1D) {
+  Rcpp::class_<QuadraticPolyEHD1D::AlgorithmType::ParentType>( "PCMBaseCpp__QuadraticPolyEHD1D_TraversalAlgorithm" )
+    .property( "VersionOPENMP", &QuadraticPolyEHD1D::AlgorithmType::ParentType::VersionOPENMP )
+    .property( "NumOmpThreads", &QuadraticPolyEHD1D::AlgorithmType::NumOmpThreads )
+  ;
+  Rcpp::class_<QuadraticPolyEHD1D::AlgorithmType> ( "PCMBaseCpp__QuadraticPolyEHD1D_ParallelPruning" )
+    .derives<QuadraticPolyEHD1D::AlgorithmType::ParentType>( "PCMBaseCpp__QuadraticPolyEHD1D_TraversalAlgorithm" )
+    .method( "ModeAutoStep", &QuadraticPolyEHD1D::AlgorithmType::ModeAutoStep )
+    .property( "ModeAutoCurrent", &QuadraticPolyEHD1D::AlgorithmType::ModeAutoCurrent )
+    .property( "IsTuning", &QuadraticPolyEHD1D::AlgorithmType::IsTuning )
+    .property( "min_size_chunk_visit", &QuadraticPolyEHD1D::AlgorithmType::min_size_chunk_visit )
+    .property( "min_size_chunk_prune", &QuadraticPolyEHD1D::AlgorithmType::min_size_chunk_prune )
+    .property( "durations_tuning", &QuadraticPolyEHD1D::AlgorithmType::durations_tuning )
+    .property( "fastest_step_tuning", &QuadraticPolyEHD1D::AlgorithmType::fastest_step_tuning )
+  ;
+  Rcpp::class_<QuadraticPolyEHD1D>( "PCMBaseCpp__QuadraticPolyEHD1D" )
+    .factory<arma::mat const&, Rcpp::List const&, Rcpp::List const&>(&CreateQuadraticPolyEHD1D)
+    .method( "TraverseTree", &QuadraticPolyEHD1D::TraverseTree )
+    .method( "StateAtNode", &QuadraticPolyEHD1D::StateAtNode )
+    .property( "tree", &QuadraticPolyEHD1D::tree )
+    .property( "algorithm", &QuadraticPolyEHD1D::algorithm )
+  ;
+}
